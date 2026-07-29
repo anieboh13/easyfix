@@ -1,0 +1,162 @@
+import Link from 'next/link'
+import { notFound } from 'next/navigation'
+import { getProducts, getCategories, formatNaira } from '@/lib/products'
+
+export default async function CategoryPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>
+  searchParams: Promise<{ page?: string }>
+}) {
+  const { slug } = await params
+  const { page: pageParam } = await searchParams
+  const page = parseInt(pageParam || '1', 10)
+
+  const categories = await getCategories()
+  const category = categories.find((c) => c.slug === slug)
+
+  if (!category) {
+    notFound()
+  }
+
+  const { products, totalCount, pageSize } = await getProducts({
+    page,
+    categorySlug: slug,
+  })
+  const totalPages = Math.ceil(totalCount / pageSize)
+
+  return (
+    <>
+      {/* Category header */}
+      <section className="bg-gradient-to-b from-[#22304A] to-[#1A2740]">
+        <div className="max-w-6xl mx-auto px-6 py-16 flex flex-col items-center text-center">
+          <span className="text-[#8FB0E0] text-xs font-semibold tracking-widest uppercase mb-3">
+            Category
+          </span>
+          <h1 className="font-[family-name:var(--font-display)] font-extrabold text-white text-4xl sm:text-5xl tracking-tight">
+            {category.name}
+          </h1>
+        </div>
+      </section>
+
+      <section className="max-w-6xl mx-auto px-6 py-14 flex gap-10 w-full flex-1">
+        {/* Category sidebar */}
+        <aside className="w-52 shrink-0 hidden md:block">
+          <h2 className="text-xs font-semibold text-[#8B93A1] uppercase tracking-wide mb-3">
+            Category
+          </h2>
+          <ul className="space-y-1 text-sm">
+            <li>
+              <Link
+                href="/"
+                className="block px-3 py-2 rounded-lg transition-colors text-[#5B6472] hover:bg-[#F4F5F7]"
+              >
+                All Products
+              </Link>
+            </li>
+            {categories.map((cat) => (
+              <li key={cat.id}>
+                <Link
+                  href={`/category/${cat.slug}`}
+                  className={`block px-3 py-2 rounded-lg transition-colors ${
+                    cat.slug === slug
+                      ? 'bg-[#22304A] text-white font-medium'
+                      : 'text-[#5B6472] hover:bg-[#F4F5F7]'
+                  }`}
+                >
+                  {cat.name}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </aside>
+
+        {/* Product grid */}
+        <div className="flex-1">
+          {products.length === 0 ? (
+            <p className="text-center text-[#5B6472] py-20">
+              No products in this category yet.
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
+              {products.map((product) => (
+                <div
+                  key={product.id}
+                  className="group rounded-2xl bg-white shadow-sm shadow-black/5 border border-[#EEF0F3] p-3 flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-black/10"
+                >
+                  <Link href={`/product/${product.id}`} className="block relative">
+                    {product.category && (
+                      <span className="absolute top-2 right-2 bg-white/95 text-[10px] px-2 py-0.5 rounded-full border border-[#E5E7EB] text-[#5B6472] z-10">
+                        {product.category.name}
+                      </span>
+                    )}
+                    <div className="aspect-square rounded-xl overflow-hidden bg-[#F4F5F7]">
+                      {product.images[0] && (
+                        <img
+                          src={product.images[0].thumbnailUrl || product.images[0].storageUrl}
+                          alt={product.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      )}
+                    </div>
+                  </Link>
+                  <p className="mt-3 text-sm font-medium line-clamp-2 text-[#22304A]">
+                    {product.title}
+                  </p>
+                  <p className="mt-1 text-base font-bold text-[#22304A]">
+                    {formatNaira(product.finalPrice)}
+                  </p>
+                  <Link
+                    href={`/product/${product.id}`}
+                    className="mt-3 text-center text-sm bg-[#22304A] text-white py-2 rounded-full font-medium hover:bg-[#3d5f9d] transition-colors"
+                  >
+                    View Details
+                  </Link>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {totalPages > 1 && (
+            <div className="flex justify-center gap-2 mt-12">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <Link
+                  key={p}
+                  href={`/category/${slug}?page=${p}`}
+                  className={`w-9 h-9 flex items-center justify-center rounded-full text-sm transition-colors ${
+                    p === page
+                      ? 'bg-[#22304A] text-white'
+                      : 'text-[#5B6472] hover:bg-[#F4F5F7]'
+                  }`}
+                >
+                  {p}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-[#22304A] text-white/70 mt-10">
+        <div className="max-w-6xl mx-auto px-6 py-14 flex flex-col sm:flex-row justify-between gap-8">
+          <div>
+            <div className="bg-white rounded-md p-1.5 inline-block mb-3">
+              <img src="/logo.png" alt="Easy Fix Screens" className="h-8" />
+            </div>
+            <p className="text-sm max-w-xs">Real replacement screens, fair prices, shipped to you.</p>
+          </div>
+          <div className="text-sm">
+            <p className="text-white font-medium mb-2">Support</p>
+            <p>Contact Us</p>
+            <p>Shipping</p>
+          </div>
+        </div>
+        <div className="border-t border-white/10 text-center text-xs py-4">
+          © {new Date().getFullYear()} Easy Fix Screens. All Rights Reserved.
+        </div>
+      </footer>
+    </>
+  )
+}

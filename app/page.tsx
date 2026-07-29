@@ -1,65 +1,168 @@
-import Image from "next/image";
+import Link from 'next/link'
+import { getProducts, getCategories, formatNaira } from '@/lib/products'
 
-export default function Home() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ page?: string }>
+}) {
+  const params = await searchParams
+  const page = parseInt(params.page || '1', 10)
+  const { products, totalCount, pageSize } = await getProducts({ page })
+  const categories = await getCategories()
+  const totalPages = Math.ceil(totalCount / pageSize)
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <>
+      {/* Hero */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-[#22304A] to-[#1A2740]">
+        <div
+          className="absolute inset-0 opacity-40"
+          style={{
+            background:
+              'radial-gradient(circle at 50% 0%, rgba(74,114,184,0.35), transparent 60%)',
+          }}
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
+        <div className="relative max-w-6xl mx-auto px-6 py-28 flex flex-col items-center text-center">
+          <span className="text-[#8FB0E0] text-xs font-semibold tracking-widest uppercase mb-4">
+            Genuine replacement parts
+          </span>
+          <h1 className="font-[family-name:var(--font-display)] font-extrabold text-white text-6xl sm:text-7xl tracking-tight">
+            Screens
           </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
+          <p className="text-white/70 mt-4 max-w-md">
+            Find the exact replacement screen for your phone — real parts, fair prices, delivered.
           </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
+          <form action="/search" className="mt-8 max-w-md w-full flex shadow-lg shadow-black/20 rounded-full overflow-hidden">
+            <input
+              type="text"
+              name="q"
+              placeholder="Search on Easy Fix Screens"
+              className="flex-1 px-5 py-3 text-[#22304A] text-sm bg-white focus:outline-none"
             />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+            <button
+              type="submit"
+              className="bg-[#4A72B8] text-white text-sm font-semibold px-6 hover:bg-[#3d5f9d] transition-colors"
+            >
+              Search
+            </button>
+          </form>
         </div>
-      </main>
-    </div>
-  );
+      </section>
+
+      <section className="max-w-6xl mx-auto px-6 py-14 flex gap-10 w-full flex-1">
+        {/* Category sidebar */}
+        <aside className="w-52 shrink-0 hidden md:block">
+          <h2 className="text-xs font-semibold text-[#8B93A1] uppercase tracking-wide mb-3">
+            Category
+          </h2>
+          <ul className="space-y-1 text-sm">
+            <li>
+              <Link
+                href="/"
+                className="block px-3 py-2 rounded-lg transition-colors bg-[#22304A] text-white font-medium"
+              >
+                All Products
+              </Link>
+            </li>
+            {categories.map((cat) => (
+              <li key={cat.id}>
+                <Link
+                  href={`/category/${cat.slug}`}
+                  className="block px-3 py-2 rounded-lg transition-colors text-[#5B6472] hover:bg-[#F4F5F7]"
+                >
+                  {cat.name}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </aside>
+
+        {/* Product grid */}
+        <div className="flex-1">
+          {products.length === 0 ? (
+            <p className="text-center text-[#5B6472] py-20">
+              No products yet — import some from the admin page.
+            </p>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
+              {products.map((product) => (
+                <div
+                  key={product.id}
+                  className="group rounded-2xl bg-white shadow-sm shadow-black/5 border border-[#EEF0F3] p-3 flex flex-col transition-all duration-300 hover:-translate-y-1 hover:shadow-lg hover:shadow-black/10"
+                >
+                  <Link href={`/product/${product.id}`} className="block relative">
+                    {product.category && (
+                      <span className="absolute top-2 right-2 bg-white/95 text-[10px] px-2 py-0.5 rounded-full border border-[#E5E7EB] text-[#5B6472] z-10">
+                        {product.category.name}
+                      </span>
+                    )}
+                    <div className="aspect-square rounded-xl overflow-hidden bg-[#F4F5F7]">
+                      {product.images[0] && (
+                        <img
+                          src={product.images[0].thumbnailUrl || product.images[0].storageUrl}
+                          alt={product.title}
+                          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        />
+                      )}
+                    </div>
+                  </Link>
+                  <p className="mt-3 text-sm font-medium line-clamp-2 text-[#22304A]">
+                    {product.title}
+                  </p>
+                  <p className="mt-1 text-base font-bold text-[#22304A]">
+                    {formatNaira(product.finalPrice)}
+                  </p>
+                  <Link
+                    href={`/product/${product.id}`}
+                    className="mt-3 text-center text-sm bg-[#22304A] text-white py-2 rounded-full font-medium hover:bg-[#3d5f9d] transition-colors"
+                  >
+                    View Details
+                  </Link>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {totalPages > 1 && (
+            <div className="flex justify-center gap-2 mt-12">
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
+                <Link
+                  key={p}
+                  href={`/?page=${p}`}
+                  className={`w-9 h-9 flex items-center justify-center rounded-full text-sm transition-colors ${
+                    p === page
+                      ? 'bg-[#22304A] text-white'
+                      : 'text-[#5B6472] hover:bg-[#F4F5F7]'
+                  }`}
+                >
+                  {p}
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="bg-[#22304A] text-white/70 mt-10">
+        <div className="max-w-6xl mx-auto px-6 py-14 flex flex-col sm:flex-row justify-between gap-8">
+          <div>
+            <div className="bg-white rounded-md p-1.5 inline-block mb-3">
+              <img src="/logo.png" alt="Easy Fix Screens" className="h-8" />
+            </div>
+            <p className="text-sm max-w-xs">Real replacement screens, fair prices, shipped to you.</p>
+          </div>
+          <div className="text-sm">
+            <p className="text-white font-medium mb-2">Support</p>
+            <p>Contact Us</p>
+            <p>Shipping</p>
+          </div>
+        </div>
+        <div className="border-t border-white/10 text-center text-xs py-4">
+          © {new Date().getFullYear()} Easy Fix Screens. All Rights Reserved.
+        </div>
+      </footer>
+    </>
+  )
 }

@@ -1,0 +1,65 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Get a free hosted Postgres database in seconds: `npx create-db`
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Product {
+  id          String   @id @default(cuid())
+  sourceUrl   String
+  sourceId    String   @unique
+  title       String
+  description String?
+  basePrice   Float
+  markupType  String
+  markupValue Float
+  finalPrice  Float
+  category    Category? @relation(fields: [categoryId], references: [id])
+  categoryId  String?
+  status      String   @default("active")
+  lastCheckedAt DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  images        ProductImage[]
+  priceHistory  PriceHistory[]
+}
+
+model ProductImage {
+  id         String  @id @default(cuid())
+  product    Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId  String
+  storageUrl String
+  thumbnailUrl String?
+}
+
+model PriceHistory {
+  id        String   @id @default(cuid())
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId String
+  price     Float
+  checkedAt DateTime @default(now())
+}
+
+model Category {
+  id       String    @id @default(cuid())
+  name     String
+  slug     String    @unique
+  products Product[]
+}
+
+model MarkupRule {
+  id      String  @id @default(cuid())
+  scope   String
+  scopeId String?
+  type    String
+  value   Float
+}
