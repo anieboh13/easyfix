@@ -62,4 +62,13 @@ model MarkupRule {
   scopeId String?
   type    String
   value   Float
+  createdAt DateTime @default(now())
+}
+
+model ImportLog {
+  id        String   @id @default(cuid())
+  type      String   // 'success' | 'error'
+  message   String?
+  sourceId  String?
+  createdAt DateTime @default(now())
 }

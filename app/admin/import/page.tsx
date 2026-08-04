@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import AdminNav from '../components/AdminNav'
 
 interface SearchResult {
   sourceId: string
@@ -17,7 +17,6 @@ interface SearchResult {
 const PAGE_SIZE = 20
 
 export default function ImportPage() {
-  const router = useRouter()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<SearchResult[]>([])
   const [page, setPage] = useState(1)
@@ -71,25 +70,13 @@ export default function ImportPage() {
     }
   }
 
-  async function handleLogout() {
-    await fetch('/api/admin/logout', { method: 'POST' })
-    router.push('/admin/login')
-    router.refresh()
-  }
-
   const totalPages = Math.min(Math.ceil(totalCount / PAGE_SIZE), 100) // AliExpress caps how deep you can page
 
-  return (
-    <div className="max-w-5xl mx-auto p-8">
-      <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Import Products</h1>
-        <button
-          onClick={handleLogout}
-          className="text-sm text-gray-600 border px-4 py-2 rounded hover:bg-gray-50"
-        >
-          Log out
-        </button>
-      </div>
+    return (
+    <div>
+      <AdminNav />
+      <div className="max-w-5xl mx-auto p-8">
+        <h1 className="text-2xl font-bold mb-6">Import Products</h1>
 
       <form onSubmit={handleSearch} className="flex gap-2 mb-4">
         <input
@@ -165,6 +152,7 @@ export default function ImportPage() {
           </button>
         </div>
       )}
+    </div>
     </div>
   )
 }
