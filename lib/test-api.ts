@@ -10,7 +10,7 @@ async function main() {
 
   for (const kw of keywords) {
     console.log(`\n=== "${kw}" ===`)
-    const results = await searchProducts(kw)
+    const { results } = await searchProducts(kw)
     results.forEach((r, i) =>
       console.log(`${i}: ${r.title} — $${r.basePrice}`)
     )
