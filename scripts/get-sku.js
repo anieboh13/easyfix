@@ -1,3 +1,13 @@
+// Debug utility: fetches and prints the raw AliExpress SKU/variant API
+// response for a single product, so you can inspect exactly what
+// AliExpress returns without digging through the full app.
+//
+// Uses the app's real getValidAccessToken() helper, so it always has a
+// valid token automatically — no need to paste one in manually.
+//
+// Usage: edit product_id below to whatever you want to inspect, then run:
+//   node scripts/get-sku.js
+
 require('dotenv').config()
 const { getValidAccessToken } = require('../lib/aliexpress-token')
 

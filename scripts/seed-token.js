@@ -1,7 +1,27 @@
+// One-time setup script: exchanges an AliExpress OAuth authorization code
+// for an access/refresh token pair, and saves it to the AliexpressToken
+// table so the app can start making authenticated API calls.
+//
+// You only need to run this once per app authorization. Re-run it if:
+//   - You're setting up the project fresh on a new machine/database
+//   - AliExpress revokes access and you need to re-authorize
+//   - You switch to different AliExpress app credentials
+//
+// To get a fresh CODE:
+//   1. Visit AliExpress's OAuth authorize URL for your app (see the
+//      AliExpress Open Platform console for your app's authorize link)
+//   2. Log in and approve access
+//   3. You'll be redirected to your configured redirect_uri with a
+//      `?code=...` query param — copy that value in below
+//   4. Run: node scripts/seed-token.js
+//
+// Note: the code is single-use and expires quickly (minutes), so grab
+// a fresh one right before running this rather than saving it for later.
+
 require('dotenv').config()
 const { PrismaClient } = require('@prisma/client')
 
-const CODE = '3_540506_hDQ0cIA6T713TeerKaHDx0hL80'
+const CODE = 'PASTE_A_FRESH_CODE_HERE'
 
 async function main() {
   const { AffiliateClient } = await import('ae_sdk')
