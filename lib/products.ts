@@ -2,7 +2,7 @@ import { prisma } from './prisma'
 
 export async function getProducts(options: { page?: number; categorySlug?: string; search?: string } = {}) {
   const page = options.page ?? 1
-  const pageSize = 12
+  const pageSize = 30
 
   const where: any = { status: 'active' }
   if (options.categorySlug) {
@@ -41,6 +41,6 @@ export function formatNaira(amount: number): string {
 export async function getProductById(id: string) {
   return prisma.product.findUnique({
     where: { id, status: 'active' },
-    include: { images: true, category: true },
+    include: { images: true, category: true, variants: true },
   })
 }

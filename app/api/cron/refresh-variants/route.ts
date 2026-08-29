@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { refreshAllProducts } from '@/lib/refresh'
+import { refreshAllProductVariants } from '@/lib/refresh-variants'
 import { alertOnPartialFailures, sendFailureAlert } from '@/lib/cron-alerts'
 
 export async function GET(req: NextRequest) {
@@ -9,13 +9,14 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
+
   try {
-    const summary = await refreshAllProducts()
-    await alertOnPartialFailures('Price refresh', summary)
+    const summary = await refreshAllProductVariants()
+    await alertOnPartialFailures('Variant refresh', summary)
     return NextResponse.json(summary)
   } catch (err) {
-    await sendFailureAlert('[Easy Fix Screens] Price refresh cron crashed', [
-      'The price-refresh cron job crashed entirely before finishing:',
+    await sendFailureAlert('[Easy Fix Screens] Variant refresh cron crashed', [
+      'The variant-refresh cron job crashed entirely before finishing:',
       String(err),
     ])
     return NextResponse.json(

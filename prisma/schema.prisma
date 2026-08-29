@@ -31,6 +31,8 @@ model Product {
 
   images        ProductImage[]
   priceHistory  PriceHistory[]
+  variants      ProductVariant[]
+  orderIntents  OrderIntent[]
 }
 
 model ProductImage {
@@ -71,4 +73,40 @@ model ImportLog {
   message   String?
   sourceId  String?
   createdAt DateTime @default(now())
+}
+
+model ProductVariant {
+  id              String   @id @default(cuid())
+  product         Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  productId       String
+  label           String   // raw AliExpress color/variant label, shown as-is
+  aliexpressSkuId String?  // AliExpress's sku_id — reference only, confirmed NOT reliably unique
+  basePrice       Float    // USD, from sale_price_with_tax
+  finalPrice      Float    // after markup engine
+  imageUrl        String?  // cached copy of sku_image_link
+  affiliateLink   String   // pre-tracked AliExpress link — never shown to customers directly
+  createdAt       DateTime @default(now())
+}
+
+model AliexpressToken {
+  id           String   @id @default("singleton")
+  accessToken  String
+  refreshToken String
+  expiresAt    DateTime
+  updatedAt    DateTime @updatedAt
+}
+
+model OrderIntent {
+  id              String   @id @default(cuid())
+  product         Product? @relation(fields: [productId], references: [id], onDelete: SetNull)
+  productId       String?
+  productTitle    String   // snapshot — stays readable even if the product is later deleted
+  variantId       String?  // snapshot only, NOT a foreign key — variant rows get replaced on refresh
+  variantLabel    String?
+  price           Float    // final Naira price shown to the customer at click time
+  affiliateLink   String?  // snapshot — what the owner needs to actually place the AliExpress order
+  sourceUrl       String?  // fallback trace-back if no variant was selected
+  aliexpressSkuId String?
+  whatsappNumber  String
+  createdAt       DateTime @default(now())
 }

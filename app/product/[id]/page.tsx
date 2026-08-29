@@ -1,7 +1,8 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
-import { getProductById, formatNaira } from '@/lib/products'
+import { getProductById } from '@/lib/products'
 import ProductGallery from './ProductGallery'
+import ProductOrderPanel from './ProductOrderPanel'
 
 // TODO: replace with your real WhatsApp number (with country code, no + or spaces)
 // e.g. Nigerian number 0803 123 4567 becomes "2348031234567"
@@ -18,11 +19,6 @@ export default async function ProductPage({
   if (!product) {
     notFound()
   }
-
-  const whatsappMessage = encodeURIComponent(
-    `Hi, I'd like to order: ${product.title} (${formatNaira(product.finalPrice)})`
-  )
-  const whatsappLink = `https://wa.me/${WHATSAPP_NUMBER}?text=${whatsappMessage}`
 
   return (
     <section className="max-w-6xl mx-auto px-6 py-10 flex-1 w-full">
@@ -44,27 +40,25 @@ export default async function ProductPage({
           <h1 className="font-[family-name:var(--font-display)] font-bold text-2xl sm:text-3xl text-[#22304A]">
             {product.title}
           </h1>
-          <p className="mt-3 text-3xl font-extrabold text-[#22304A]">
-            {formatNaira(product.finalPrice)}
-          </p>
-
           <p className="mt-6 text-sm text-[#5B6472] leading-relaxed">
             {product.description}
           </p>
 
-          <div className="mt-8 flex flex-col gap-3">
-            <a
-              href={whatsappLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-center bg-[#22304A] text-white py-3.5 rounded-full font-semibold hover:bg-[#3d5f9d] transition-colors"
-            >
-              Order via WhatsApp
-            </a>
-            <p className="text-xs text-center text-[#8B93A1]">
-              We&apos;ll confirm availability and delivery details with you directly.
-            </p>
-          </div>
+          <ProductOrderPanel
+            productId={product.id}
+            sourceUrl={product.sourceUrl}
+            title={product.title}
+            basePrice={product.finalPrice}
+            variants={product.variants.map((v) => ({
+              id: v.id,
+              label: v.label,
+              finalPrice: v.finalPrice,
+              imageUrl: v.imageUrl,
+              affiliateLink: v.affiliateLink,
+              aliexpressSkuId: v.aliexpressSkuId,
+            }))}
+            whatsappNumber={WHATSAPP_NUMBER}
+          />
         </div>
       </div>
     </section>

@@ -1,11 +1,22 @@
 import crypto from 'crypto'
 import { calculateFinalPrice } from './markup-engine'
 import { cacheImage } from './image-storage'
+import { getValidAccessToken } from './aliexpress-token'
+import { prisma } from './prisma'
 
 const API_URL = 'https://api-sg.aliexpress.com/sync'
 const APP_KEY = process.env.ALIEXPRESS_APP_KEY!
 const APP_SECRET = process.env.ALIEXPRESS_APP_SECRET!
 const TRACKING_ID = process.env.ALIEXPRESS_TRACKING_ID!
+
+export class AliExpressApiError extends Error {
+  code?: string
+  constructor(message: string, code?: string) {
+    super(message)
+    this.name = 'AliExpressApiError'
+    this.code = code
+  }
+}
 
 // AliExpress requires every request to be "signed" — proof the request
 // really came from you and wasn't tampered with. It works like this:
@@ -68,8 +79,6 @@ export async function fetchProductDetails(
   const sign = signRequest(baseParams)
   const allParams = { ...baseParams, sign }
 
-  console.log('Sending params:', allParams)
-
   const response = await fetch(API_URL, {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=utf-8' },
@@ -77,7 +86,17 @@ export async function fetchProductDetails(
   })
 
   const data = await response.json()
-  console.log(JSON.stringify(data, null, 2))
+
+  if (data?.error_response) {
+    // A genuine API-level error (rate limit, auth issue, etc.) — this is NOT
+    // the same as "this product no longer exists". Throw so callers can
+    // distinguish it from a real delisting instead of wrongly deactivating
+    // a perfectly fine product.
+    throw new AliExpressApiError(
+      data.error_response.msg || 'AliExpress API error',
+      data.error_response.code
+    )
+  }
 
   const result =
     data?.aliexpress_affiliate_productdetail_get_response?.resp_result?.result
@@ -96,8 +115,6 @@ export async function fetchProductDetails(
     basePrice: parseFloat(result.target_sale_price),
     imageUrls: result.product_small_image_urls?.string ?? [],
   }
-
-
 }
 
 export interface SearchResult extends NormalizedProduct {
@@ -164,12 +181,135 @@ export async function searchProducts(
 export async function importFromSearchResult(result: SearchResult) {
   return saveProduct(result)
 }
+
 export function extractProductId(url: string): string | null {
   const match = url.match(/\/item\/(\d+)\.html/)
   return match ? match[1] : null
 }
 
-import { prisma } from './prisma'
+// --- SKU / variant fetching -------------------------------------------------
+
+export interface NormalizedVariant {
+  label: string
+  aliexpressSkuId: string | null
+  basePrice: number
+  imageUrl: string | null
+  affiliateLink: string
+}
+
+// Throws AliExpressApiError on genuine failures (rate limit, auth, etc.)
+// so callers that need to distinguish "temporary failure" from "product
+// genuinely has zero variants" can do so. Used by the refresh job.
+export async function fetchProductSkuDetailsOrThrow(
+  productId: string
+): Promise<NormalizedVariant[]> {
+  const accessToken = await getValidAccessToken()
+  const { AffiliateClient } = await import('ae_sdk')
+
+  const client = new AffiliateClient({
+    app_key: APP_KEY,
+    app_secret: APP_SECRET,
+    session: accessToken,
+  })
+
+  const result = await client.callAPIDirectly(
+    'aliexpress.affiliate.product.sku.detail.get',
+    {
+      product_id: productId,
+      target_currency: 'USD',
+      target_language: 'EN',
+      ship_to_country: 'NG',
+    }
+  )
+
+  if (!result.ok) {
+    throw new AliExpressApiError(
+      JSON.stringify(result),
+      (result as any)?.error_response?.code
+    )
+  }
+
+  const list =
+    (result.data as any)
+      ?.aliexpress_affiliate_product_sku_detail_get_response
+      ?.result?.result?.ae_item_sku_info?.traffic_sku_info_list ?? []
+
+  const variants: NormalizedVariant[] = []
+
+  for (const item of list) {
+    try {
+      const label = item?.color
+      const basePrice = parseFloat(item?.sale_price_with_tax)
+
+      // Defensive: skip any entry missing what we actually need, rather
+      // than letting one malformed variant break the whole import/refresh.
+      if (!label || isNaN(basePrice)) continue
+
+      variants.push({
+        label: String(label),
+        aliexpressSkuId: item?.sku_id != null ? String(item.sku_id) : null,
+        basePrice,
+        imageUrl: item?.sku_image_link ?? null,
+        affiliateLink: item?.link ?? '',
+      })
+    } catch (err) {
+      console.error('Skipping malformed SKU entry for', productId, err)
+    }
+  }
+
+  return variants
+}
+
+// Best-effort, safe wrapper for import time — never throws, so a variant
+// fetch failure never blocks importing the base product.
+export async function fetchProductSkuDetails(
+  productId: string
+): Promise<NormalizedVariant[]> {
+  try {
+    return await fetchProductSkuDetailsOrThrow(productId)
+  } catch (err) {
+    console.error('fetchProductSkuDetails failed for', productId, err)
+    return []
+  }
+}
+
+// Saves fetched variants for a product. Best-effort per variant — one bad
+// variant (e.g. a failed image cache) is skipped, not fatal to the rest.
+export async function saveVariants(
+  productId: string,
+  sourceId: string,
+  categoryId: string | undefined,
+  variants: NormalizedVariant[]
+) {
+  for (let i = 0; i < variants.length; i++) {
+    const v = variants[i]
+    try {
+      let imageUrl = v.imageUrl
+      if (imageUrl) {
+        const cached = await cacheImage(imageUrl, `${sourceId}-variant-${i}`)
+        imageUrl = cached?.fullUrl ?? imageUrl
+      }
+
+      const finalPrice = await calculateFinalPrice(v.basePrice, { categoryId })
+
+      await prisma.productVariant.create({
+        data: {
+          productId,
+          label: v.label,
+          aliexpressSkuId: v.aliexpressSkuId,
+          basePrice: v.basePrice,
+          finalPrice,
+          imageUrl,
+          affiliateLink: v.affiliateLink,
+        },
+      })
+    } catch (err) {
+      console.error('Failed to save a variant, skipping it:', err)
+    }
+  }
+}
+
+// -----------------------------------------------------------------------
 
 async function saveProduct(details: NormalizedProduct) {
   const existing = await prisma.product.findUnique({ where: { sourceId: details.sourceId } })
@@ -184,7 +324,7 @@ async function saveProduct(details: NormalizedProduct) {
 
   const category = await prisma.category.findUnique({ where: { slug: 'uncategorized' } })
   const finalPrice = await calculateFinalPrice(details.basePrice, { categoryId: category?.id })
- 
+
   const product = await prisma.product.create({
     data: {
       sourceUrl: details.sourceUrl,
@@ -205,6 +345,13 @@ async function saveProduct(details: NormalizedProduct) {
     },
     include: { images: true },
   })
+
+  // Best-effort: fetch and save variant/color data. A failure here never
+  // blocks the base product from being imported.
+  const variants = await fetchProductSkuDetails(details.sourceId)
+  if (variants.length > 0) {
+    await saveVariants(product.id, details.sourceId, category?.id, variants)
+  }
 
   return { success: true, product }
 }
@@ -229,7 +376,21 @@ export async function refreshProduct(product: {
   categoryId: string | null
   finalPrice: number
 }) {
-  const details = await fetchProductDetails(product.sourceId)
+  let details
+  try {
+    details = await fetchProductDetails(product.sourceId)
+  } catch (err) {
+    if (err instanceof AliExpressApiError) {
+      // Temporary hiccup (rate limit, etc.) — leave the product exactly as it
+      // is. It'll simply get picked up again on the next scheduled refresh.
+      return {
+        success: false,
+        action: 'skipped-temporary-error' as const,
+        error: err.message,
+      }
+    }
+    throw err
+  }
 
   if (!details) {
     // AliExpress no longer returns this product — likely delisted by the seller
@@ -276,4 +437,37 @@ export async function refreshProduct(product: {
   })
 
   return { success: true, action: 'updated' as const }
+}
+
+export async function refreshProductVariants(product: {
+  id: string
+  sourceId: string
+  categoryId: string | null
+}) {
+  let variants
+  try {
+    variants = await fetchProductSkuDetailsOrThrow(product.sourceId)
+  } catch (err) {
+    if (err instanceof AliExpressApiError) {
+      // Temporary failure — leave existing variants untouched, try again
+      // on the next scheduled run. Critically, we do NOT wipe good data
+      // just because this one fetch failed.
+      return {
+        success: false,
+        action: 'skipped-temporary-error' as const,
+        error: err.message,
+      }
+    }
+    throw err
+  }
+
+  // Only reaching here means the fetch genuinely succeeded — safe to
+  // replace old variant data now.
+  await prisma.productVariant.deleteMany({ where: { productId: product.id } })
+
+  if (variants.length > 0) {
+    await saveVariants(product.id, product.sourceId, product.categoryId ?? undefined, variants)
+  }
+
+  return { success: true, action: 'updated' as const, variantCount: variants.length }
 }

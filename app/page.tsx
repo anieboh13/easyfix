@@ -23,7 +23,7 @@ export default async function HomePage({
               'radial-gradient(circle at 50% 0%, rgba(74,114,184,0.35), transparent 60%)',
           }}
         />
-        <div className="relative max-w-6xl mx-auto px-6 py-28 flex flex-col items-center text-center">
+        <div className="relative max-w-[100rem] mx-auto px-6 py-28 flex flex-col items-center text-center">
           <span className="text-[#8FB0E0] text-xs font-semibold tracking-widest uppercase mb-4">
             Genuine replacement parts
           </span>
@@ -50,7 +50,26 @@ export default async function HomePage({
         </div>
       </section>
 
-      <section className="max-w-6xl mx-auto px-6 py-14 flex gap-10 w-full flex-1">
+      <section className="max-w-[100rem] mx-auto px-6 py-14 flex flex-col md:flex-row gap-6 md:gap-10 w-full flex-1">
+        {/* Category pills — mobile only */}
+        <div className="md:hidden -mx-6 px-6 flex gap-2 overflow-x-auto pb-1">
+          <Link
+            href="/"
+            className="shrink-0 px-4 py-2 rounded-full text-sm whitespace-nowrap bg-[#22304A] text-white font-medium"
+          >
+            All Products
+          </Link>
+          {categories.map((cat) => (
+            <Link
+              key={cat.id}
+              href={`/category/${cat.slug}`}
+              className="shrink-0 px-4 py-2 rounded-full text-sm whitespace-nowrap bg-[#F4F5F7] text-[#5B6472]"
+            >
+              {cat.name}
+            </Link>
+          ))}
+        </div>
+        
         {/* Category sidebar */}
         <aside className="w-52 shrink-0 hidden md:block">
           <h2 className="text-xs font-semibold text-[#8B93A1] uppercase tracking-wide mb-3">
@@ -85,7 +104,7 @@ export default async function HomePage({
               No products yet — import some from the admin page.
             </p>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-6">
+            <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-6">
               {products.map((product) => (
                 <div
                   key={product.id}
@@ -146,7 +165,7 @@ export default async function HomePage({
 
       {/* Footer */}
       <footer className="bg-[#22304A] text-white/70 mt-10">
-        <div className="max-w-6xl mx-auto px-6 py-14 flex flex-col sm:flex-row justify-between gap-8">
+        <div className="max-w-[100rem] mx-auto px-6 py-14 flex flex-col sm:flex-row justify-between gap-8">
           <div>
             <div className="bg-white rounded-md p-1.5 inline-block mb-3">
               <img src="/logo.png" alt="Easy Fix Screens" className="h-8" />
