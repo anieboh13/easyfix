@@ -29,6 +29,7 @@ export default function ProductOrderPanel({
 }) {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [zoomedImage, setZoomedImage] = useState<{ url: string; label: string } | null>(null)
+  const [showSelectionError, setShowSelectionError] = useState(false)
   const selected = variants.find((v) => v.id === selectedId) ?? null
   const displayPrice = selected ? selected.finalPrice : basePrice
 
@@ -39,9 +40,6 @@ export default function ProductOrderPanel({
   )
   const whatsappLink = `https://wa.me/${whatsappNumber}?text=${whatsappMessage}`
 
-  // Fire-and-forget: logs the click without delaying or blocking the
-  // WhatsApp navigation (target="_blank" keeps this tab alive, so the
-  // fetch completes normally even as the new tab opens).
   function logOrderIntent() {
     fetch('/api/order-intent', {
       method: 'POST',
@@ -58,9 +56,24 @@ export default function ProductOrderPanel({
         whatsappNumber,
       }),
     }).catch((err) => {
-      // Never let a logging failure block or alarm the customer.
       console.error('Failed to log order intent:', err)
     })
+  }
+
+  // Only require a selection when the product actually HAS variants to
+  // choose from — a product with none can order straight away.
+  function handleOrderClick(e: React.MouseEvent<HTMLAnchorElement>) {
+    if (variants.length > 0 && !selected) {
+      e.preventDefault()
+      setShowSelectionError(true)
+      return
+    }
+    logOrderIntent()
+  }
+
+  function handleSelectVariant(id: string) {
+    setSelectedId(id === selectedId ? null : id)
+    setShowSelectionError(false)
   }
 
   return (
@@ -79,10 +92,12 @@ export default function ProductOrderPanel({
               <button
                 key={v.id}
                 type="button"
-                onClick={() => setSelectedId(v.id === selectedId ? null : v.id)}
+                onClick={() => handleSelectVariant(v.id)}
                 className={`group relative flex flex-col items-center gap-1 p-1.5 rounded-lg border transition-colors ${
                   v.id === selectedId
                     ? 'border-[#22304A] border-2'
+                    : showSelectionError
+                    ? 'border-red-400'
                     : 'border-[#EEF0F3]'
                 }`}
               >
@@ -128,11 +143,15 @@ export default function ProductOrderPanel({
               </button>
             ))}
           </div>
-          {selected && (
+          {selected ? (
             <p className="text-xs text-[#5B6472] mt-2">
               Selected: <span className="font-medium">{selected.label}</span>
             </p>
-          )}
+          ) : showSelectionError ? (
+            <p className="text-xs text-red-600 font-medium mt-2">
+              Please select an option before ordering
+            </p>
+          ) : null}
         </div>
       )}
 
@@ -141,7 +160,7 @@ export default function ProductOrderPanel({
           href={whatsappLink}
           target="_blank"
           rel="noopener noreferrer"
-          onClick={logOrderIntent}
+          onClick={handleOrderClick}
           className="text-center bg-[#22304A] text-white py-3.5 rounded-full font-semibold hover:bg-[#3d5f9d] transition-colors"
         >
           Order via WhatsApp

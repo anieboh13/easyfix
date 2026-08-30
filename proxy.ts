@@ -4,7 +4,6 @@ import { jwtVerify } from 'jose'
 const secret = new TextEncoder().encode(process.env.JWT_SECRET!)
 
 export async function proxy(req: NextRequest) {
-  console.log('>>> PROXY RUNNING for:', req.nextUrl.pathname)
   
   const { pathname } = req.nextUrl
 
