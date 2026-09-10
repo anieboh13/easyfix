@@ -110,3 +110,12 @@ model OrderIntent {
   whatsappNumber  String
   createdAt       DateTime @default(now())
 }
+
+model ExchangeRate {
+  id        String   @id @default("singleton") // only ever one row
+  rate      Float    // last known official USD→NGN mid-market rate
+  bufferPct Float    @default(5)   // owner-controlled cushion, in percent
+  source    String   @default("default") // "open.er-api.com" | "manual" | "default"
+  fetchedAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

@@ -1,4 +1,5 @@
 import { prisma } from './prisma'
+import { getEffectiveRate } from './exchange-rate'
 
 const EXCHANGE_RATE = parseFloat(process.env.USD_TO_NGN_RATE || '1550')
 
@@ -38,7 +39,8 @@ export async function calculateFinalPrice(
   basePriceUSD: number,
   context: MarkupContext = {}
 ): Promise<number> {
-  const basePriceNaira = basePriceUSD * EXCHANGE_RATE
+  const exchangeRate = await getEffectiveRate()
+  const basePriceNaira = basePriceUSD * exchangeRate
   const rule = await getApplicableMarkupRule(context)
 
   let finalPrice: number
