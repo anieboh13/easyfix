@@ -1,7 +1,7 @@
 import { prisma } from './prisma'
 import { refreshProduct } from './aliexpress-api'
 import { updateExchangeRate } from './exchange-rate'
-import { sendFailureAlert } from './cron-alerts' // add near the other imports
+import { sendFailureAlert } from './cron-alerts'
 
 function delay(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms))
@@ -29,13 +29,17 @@ export async function refreshAllProducts() {
   const results: { id: string; success: boolean; action?: string; error?: string }[] = []
 
   for (const product of products) {
-    try {
-      const result = await refreshProduct(product)
-      results.push({ id: product.id, success: true, action: result.action })
-    } catch (err) {
-      results.push({ id: product.id, success: false, error: String(err) })
+    let result = await refreshProduct(product)
+
+    // If we hit a temporary error (e.g. rate limit), wait a bit longer and
+    // try this one product once more before moving on.
+    if (!result.success && result.action === 'skipped-temporary-error') {
+      await delay(3000)
+      result = await refreshProduct(product)
     }
-    await delay(1000) // one request per second, safely under AliExpress's rate limit
+
+    results.push({ id: product.id, ...result })
+    await delay(2000) // slower pacing — AliExpress's real limit is tighter than 1/sec
   }
 
   return {
