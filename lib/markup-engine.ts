@@ -1,5 +1,6 @@
 import { prisma } from './prisma'
 import { getEffectiveRate } from './exchange-rate'
+import { getShippingSettingForProduct, applyShippingBuffer } from './shipping'
 
 const EXCHANGE_RATE = parseFloat(process.env.USD_TO_NGN_RATE || '1550')
 
@@ -34,20 +35,26 @@ async function getApplicableMarkupRule(context: MarkupContext) {
   return { type: 'fixed', value: 20000 }
 }
 
-// Converts a USD base price to Naira and applies the markup rule.
+// Converts a USD base price to Naira, adds the shipping buffer, then
+// applies the markup rule — so markup is calculated on the true landed
+// cost (item + shipping), not just the item price alone.
 export async function calculateFinalPrice(
   basePriceUSD: number,
   context: MarkupContext = {}
 ): Promise<number> {
   const exchangeRate = await getEffectiveRate()
   const basePriceNaira = basePriceUSD * exchangeRate
+
+  const shipping = await getShippingSettingForProduct(context.productId)
+  const priceWithShipping = applyShippingBuffer(basePriceNaira, shipping)
+
   const rule = await getApplicableMarkupRule(context)
 
   let finalPrice: number
   if (rule.type === 'percent') {
-    finalPrice = basePriceNaira * (1 + rule.value / 100)
+    finalPrice = priceWithShipping * (1 + rule.value / 100)
   } else {
-    finalPrice = basePriceNaira + rule.value
+    finalPrice = priceWithShipping + rule.value
   }
 
   // Round to a "clean-looking" price — nearest 100, minus 100

@@ -12,6 +12,7 @@ export default function AdminNav() {
     { href: '/admin/import', label: 'Import' },
     { href: '/admin/products', label: 'Products' },
     { href: '/admin/markup', label: 'Markup Rules' },
+    { href: '/admin/shipping', label: 'Shipping' },
     { href: '/admin/orders', label: 'Orders' },
   ]
 

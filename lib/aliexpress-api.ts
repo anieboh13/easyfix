@@ -290,7 +290,7 @@ export async function saveVariants(
         imageUrl = cached?.fullUrl ?? imageUrl
       }
 
-      const finalPrice = await calculateFinalPrice(v.basePrice, { categoryId })
+            const finalPrice = await calculateFinalPrice(v.basePrice, { productId, categoryId })
 
       await prisma.productVariant.create({
         data: {

@@ -20,6 +20,7 @@ export default function MarkupRulesPage() {
   const [rules, setRules] = useState<MarkupRule[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(false)
+  const [msg, setMsg] = useState('')
 
   const [scope, setScope] = useState('global')
   const [categoryId, setCategoryId] = useState('')
@@ -39,19 +40,28 @@ export default function MarkupRulesPage() {
     setRules(data.rules || [])
   }
 
+  function recalcMessage(recalculated: any) {
+    return `Recalculated ${recalculated?.productsUpdated ?? 0} product(s) and ${
+      recalculated?.variantsUpdated ?? 0
+    } variant(s) immediately.`
+  }
+
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
+    setMsg('')
 
     const body: any = { scope, type, value: parseFloat(value) }
     if (scope === 'category') body.scopeId = categoryId
 
-    await fetch('/api/admin/markup-rules', {
+    const res = await fetch('/api/admin/markup-rules', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     })
+    const data = await res.json()
 
+    setMsg(`Rule added. ${recalcMessage(data.recalculated)}`)
     setValue('')
     setCategoryId('')
     fetchRules()
@@ -60,7 +70,10 @@ export default function MarkupRulesPage() {
 
   async function deleteRule(id: string) {
     if (!confirm('Delete this rule?')) return
-    await fetch(`/api/admin/markup-rules/${id}`, { method: 'DELETE' })
+    setMsg('')
+    const res = await fetch(`/api/admin/markup-rules/${id}`, { method: 'DELETE' })
+    const data = await res.json()
+    setMsg(`Rule deleted. ${recalcMessage(data.recalculated)}`)
     fetchRules()
   }
 
@@ -73,6 +86,10 @@ export default function MarkupRulesPage() {
       <AdminNav />
       <div className="max-w-5xl mx-auto p-8">
         <h1 className="text-2xl font-bold mb-6">Markup Rules</h1>
+
+        {msg && (
+          <div className="mb-4 p-3 rounded bg-blue-50 text-blue-800 text-sm">{msg}</div>
+        )}
 
         <div className="bg-white border rounded-lg p-6 mb-8">
           <h2 className="font-bold mb-4">Add New Rule</h2>

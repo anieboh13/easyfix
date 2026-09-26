@@ -28,13 +28,16 @@ export async function refreshAllProducts() {
 
   const results: { id: string; success: boolean; action?: string; error?: string }[] = []
 
-  for (const product of products) {
+    for (const product of products) {
     let result = await refreshProduct(product)
 
-    // If we hit a temporary error (e.g. rate limit), wait a bit longer and
-    // try this one product once more before moving on.
-    if (!result.success && result.action === 'skipped-temporary-error') {
-      await delay(3000)
+    // If we hit a temporary error (e.g. rate limit), retry with increasing
+    // waits before giving up — a single retry isn't always enough to
+    // outlast AliExpress's rate-limit window.
+    const retryDelays = [3000, 6000]
+    for (const waitMs of retryDelays) {
+      if (result.success || result.action !== 'skipped-temporary-error') break
+      await delay(waitMs)
       result = await refreshProduct(product)
     }
 

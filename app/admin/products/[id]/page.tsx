@@ -13,6 +13,9 @@ interface Product {
   hasCustomMarkup: boolean
   customMarkupType: string
   customMarkupValue: number
+  hasShippingOverride: boolean
+  shippingOverrideType: string
+  shippingOverrideValue: number
   finalPrice: number
   images: { storageUrl: string }[]
 }
@@ -33,6 +36,9 @@ export default function EditProductPage() {
   const [useCustomMarkup, setUseCustomMarkup] = useState(false)
   const [markupType, setMarkupType] = useState('fixed')
   const [markupValue, setMarkupValue] = useState('')
+  const [useShippingOverride, setUseShippingOverride] = useState(false)
+  const [shippingType, setShippingType] = useState('fixed')
+  const [shippingValue, setShippingValue] = useState('')
 
   useEffect(() => {
     fetch(`/api/admin/products/${id}`)
@@ -49,6 +55,12 @@ export default function EditProductPage() {
           setUseCustomMarkup(true)
           setMarkupType(p.customMarkupType)
           setMarkupValue(p.customMarkupValue.toString())
+        }
+
+        if (p.hasShippingOverride) {
+          setUseShippingOverride(true)
+          setShippingType(p.shippingOverrideType)
+          setShippingValue(p.shippingOverrideValue.toString())
         }
       })
   }, [id])
@@ -71,6 +83,14 @@ export default function EditProductPage() {
     } else {
       body.markupType = null
       body.markupValue = null
+    }
+
+    if (useShippingOverride) {
+      body.shippingType = shippingType
+      body.shippingValue = parseFloat(shippingValue)
+    } else {
+      body.shippingType = null
+      body.shippingValue = null
     }
 
     const res = await fetch(`/api/admin/products/${id}`, {
@@ -180,6 +200,9 @@ export default function EditProductPage() {
                 Use custom markup for this product
               </span>
             </label>
+             <p className="text-xs text-gray-500 mb-4 -mt-3">
+              Overrides the global Markup value for this product only
+            </p>
 
             {useCustomMarkup && (
               <div className="grid grid-cols-2 gap-4">
@@ -208,6 +231,55 @@ export default function EditProductPage() {
                     onChange={(e) => setMarkupValue(e.target.value)}
                     className="w-full border rounded px-3 py-2"
                     required={useCustomMarkup}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="border-t pt-4">
+            <label className="flex items-center gap-2 mb-4">
+              <input
+                type="checkbox"
+                checked={useShippingOverride}
+                onChange={(e) => setUseShippingOverride(e.target.checked)}
+              />
+              <span className="font-medium">
+                Use custom shipping fee for this product
+              </span>
+            </label>
+            <p className="text-xs text-gray-500 mb-4 -mt-3">
+              Overrides the site-wide shipping buffer for this product only — useful for
+              heavy or oversized items that cost more to ship than average.
+            </p>
+
+            {useShippingOverride && (
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Shipping Type
+                  </label>
+                  <select
+                    value={shippingType}
+                    onChange={(e) => setShippingType(e.target.value)}
+                    className="w-full border rounded px-3 py-2"
+                    required={useShippingOverride}
+                  >
+                    <option value="fixed">Fixed amount (₦)</option>
+                    <option value="percent">Percentage (%)</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium mb-1">
+                    Shipping Value
+                  </label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={shippingValue}
+                    onChange={(e) => setShippingValue(e.target.value)}
+                    className="w-full border rounded px-3 py-2"
+                    required={useShippingOverride}
                   />
                 </div>
               </div>
