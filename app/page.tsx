@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { getProducts, getCategories, formatNaira } from '@/lib/products'
+import Footer from './components/Footer'
 
 export default async function HomePage({
   searchParams,
@@ -163,25 +164,7 @@ export default async function HomePage({
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-[#22304A] text-white/70 mt-10">
-        <div className="max-w-[100rem] mx-auto px-6 py-14 flex flex-col sm:flex-row justify-between gap-8">
-          <div>
-            <div className="bg-white rounded-md p-1.5 inline-block mb-3">
-              <img src="/logo.png" alt="Easy Fix Screens" className="h-8" />
-            </div>
-            <p className="text-sm max-w-xs">Real replacement screens, fair prices, shipped to you.</p>
-          </div>
-          <div className="text-sm">
-            <p className="text-white font-medium mb-2">Support</p>
-            <p>Contact Us</p>
-            <p>Shipping</p>
-          </div>
-        </div>
-        <div className="border-t border-white/10 text-center text-xs py-4">
-          © {new Date().getFullYear()} Easy Fix Screens. All Rights Reserved.
-        </div>
-      </footer>
+      <Footer />
     </>
   )
 }
