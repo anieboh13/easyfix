@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const inter = Inter({
@@ -26,7 +27,7 @@ export default function RootLayout({
     <html lang="en" className={`${inter.variable} ${jakarta.variable}`}>
       <body className="min-h-full flex flex-col bg-white text-[#22304A]" suppressHydrationWarning>
         <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-sm border-b border-[#E5E7EB] px-6 py-3">
-          <div className="max-w-6xl mx-auto flex items-center justify-between">
+          <div className="max-w-[100rem] mx-auto flex items-center justify-between">
             <a href="/" className="flex items-center gap-2">
               <img src="/logo.png" alt="Easy Fix Screens" className="h-14" />
             </a>
@@ -36,6 +37,7 @@ export default function RootLayout({
           </div>
         </header>
         {children}
+        <Analytics />
       </body>
     </html>
   );
